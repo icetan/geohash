@@ -18,14 +18,7 @@ function _geolocation(callback) {
 
 function geolocation(callback) {
   if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
-    if (typeof process === 'undefined') {
-      callback("Not running in a browser?");
-    } else {
-      callback(null, {coords:{
-        latitude: parseFloat(process.argv[2]),
-        longitude: parseFloat(process.argv[3])
-      }});
-    }
+      callback("Sorry no GeoLocation support.");
   } else {
     if (lastPosition) {
       _geolocation(function(err, p) {
@@ -56,8 +49,8 @@ function hash(coords, dow) {
     parseInt(hex.substr(hex.length/2), 16)
   ];
   return {
-    lat: parseFloat((coords.latitude|0)+'.'+dec[0]),
-    lng: parseFloat((coords.longitude|0)+'.'+dec[1])
+    latitude: parseFloat((coords.latitude|0)+'.'+dec[0]),
+    longitude: parseFloat((coords.longitude|0)+'.'+dec[1])
   };
 }
 
@@ -76,20 +69,29 @@ function getDow(callback) {
   }).on('error', callback);
 }
 
-function geohash(callback) {
-  geolocation(function(err, p) {
-    if (err != null) return console.log(err);
-    getDow(function(err, dow) {
-      callback(err, hash(p.coords, dow));
-    });
+function geohash(latlng, callback) {
+  getDow(function(err, dow) {
+    if (!callback) {
+      callback = latlng;
+      geolocation(function(err, p) {
+        if (err != null) return console.error(err);
+        callback(err, hash(p.coords, dow));
+      });
+    } else {
+      callback(null, hash(latlng, dow));
+    }
   });
 }
 
 module.exports = geohash;
+geohash.geolocation = geolocation;
 
 if (typeof window === 'undefined') {
   if (!module.parent)
-    geohash(function(err, latlng) {
+    geohash({
+      latitude: parseFloat(process.argv[2]),
+      longitude: parseFloat(process.argv[3])
+    }, function(err, latlng) {
       if (err != null) return console.error(err);
       console.log(JSON.stringify(latlng));
     });

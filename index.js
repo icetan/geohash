@@ -1,34 +1,20 @@
 var http = require('http'),
     crypto = require('crypto'),
-    lastPosition;
+    setLastPosition, lastPosition;
+
+function geolocation(callback) {
+  if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+    callback("Sorry no GeoLocation support.");
+  } else {
+    navigator.geolocation.getCurrentPosition(function(p) {
+      callback(null, p);
+    }, function(err) { callback(err); }, { maximumAge:600000 });
+  }
+}
 
 function pad(n, p) {
   if (p == null) p = 2;
   return (new Array(p + 1 - n.toString().length)).join('0') + n;
-}
-
-function _geolocation(callback) {
-  navigator.geolocation.getCurrentPosition(function(p) {
-    callback(null, p);
-  }, function(err) { callback(err); });
-}
-
-function geolocation(callback) {
-  if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
-      callback("Sorry no GeoLocation support.");
-  } else {
-    if (lastPosition) {
-      _geolocation(function(err, p) {
-        lastPosition = p;
-      });
-      callback(null, lastPosition);
-    } else {
-      _geolocation(function(err, p) {
-        lastPosition = p;
-        callback(err, p);
-      });
-    }
-  }
 }
 
 function hash(coords, dow, date) {
@@ -90,7 +76,6 @@ function geohash(opt, callback) {
 }
 
 module.exports = geohash;
-geohash.geolocation = geolocation;
 
 if (typeof window === 'undefined') {
   if (!module.parent)

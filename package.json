@@ -1,0 +1,24 @@
+{
+  "name": "geohash",
+  "version": "0.0.1",
+  "description": "Generate todays geohash.",
+  "author": "Christopher Fredén <c.freden@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/icetan/geohash.git"
+  },
+  "licenses": [{
+    "type": "MIT",
+    "url": "https://raw.github.com/icetan/geohash/master/LICENSE"
+  }],
+  "engine": {
+    "node": ">=0.6.0"
+  },
+  "devDependencies": {
+    "browserify": "*"
+  },
+  "scripts": {
+    "build": "node_modules/.bin/browserify index.js > geohash.js"
+  },
+  "files": ["index.js", "README.md", "LICENSE"]
+}

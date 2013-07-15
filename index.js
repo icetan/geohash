@@ -10,10 +10,7 @@ function pad(n, p) {
 function _geolocation(callback) {
   navigator.geolocation.getCurrentPosition(function(p) {
     callback(null, p);
-  }, function(err) {
-    console.error("Error when retrieving location", err);
-    callback(err);
-  });
+  }, function(err) { callback(err); });
 }
 
 function geolocation(callback) {
@@ -28,15 +25,15 @@ function geolocation(callback) {
     } else {
       _geolocation(function(err, p) {
         lastPosition = p;
-        callback(null, p);
+        callback(err, p);
       });
     }
   }
 }
 
-function hash(coords, dow) {
-  var date = new Date,
-      dateStr = date.getFullYear() +
+function hash(coords, dow, date) {
+  date = date || new Date;
+  var dateStr = date.getFullYear() +
         '-' + pad(date.getMonth()+1) +
         '-' + pad(date.getDate()) +
         '-' + dow,
@@ -56,6 +53,7 @@ function hash(coords, dow) {
 
 function getDow(callback) {
   http.get({
+    scheme: 'http',
     host: 'allow-any-origin.appspot.com',
     port: 80,
     path: '/http://www.google.com/ig/api?stock=.DJI'
@@ -63,24 +61,32 @@ function getDow(callback) {
     var data = '';
     res.on('data', function(chunk) { data += chunk; });
     res.on('end', function() {
-      var m = /<open data="(\d+(:?\.\d+)?)"\/>/.exec(data.toString());
-      callback(null, parseFloat(m[1]));
+      var m = /<open data="(\d+(?:\.\d+)?)"\/>/.exec(data.toString());
+      if (m != null)
+        callback(null, parseFloat(m[1]));
+      else
+        callback("Couldn't parse DOW opening data.");
     });
   }).on('error', callback);
 }
 
-function geohash(latlng, callback) {
-  getDow(function(err, dow) {
-    if (!callback) {
-      callback = latlng;
-      geolocation(function(err, p) {
-        if (err != null) return console.error(err);
-        callback(err, hash(p.coords, dow));
-      });
-    } else {
-      callback(null, hash(latlng, dow));
-    }
-  });
+function geohash(opt, callback) {
+  var count = 1, errs = [],
+      done = function(err, param, value) {
+        if (err != null)
+          errs.push(err);
+        else if (param)
+          opt[param] = value;
+        if (--count === 0) {
+          if (errs.length > 0) callback(errs);
+          else callback(null, hash(opt.latlng, opt.dow, opt.date));
+        }
+      };
+  if (!opt.latlng && ++count)
+    geolocation(function(err, p) { done(err, 'latlng', (p ? p.coords : null)); });
+  if (!opt.dow && ++count)
+    getDow(function(err, dow) { done(err, 'dow', dow); });
+  done();
 }
 
 module.exports = geohash;
@@ -89,8 +95,10 @@ geohash.geolocation = geolocation;
 if (typeof window === 'undefined') {
   if (!module.parent)
     geohash({
-      latitude: parseFloat(process.argv[2]),
-      longitude: parseFloat(process.argv[3])
+      latlng: {
+        latitude: parseFloat(process.argv[2]),
+        longitude: parseFloat(process.argv[3])
+      }
     }, function(err, latlng) {
       if (err != null) return console.error(err);
       console.log(JSON.stringify(latlng));
